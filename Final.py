@@ -30,67 +30,75 @@ from sklearn.linear_model import Lasso
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
+plt.style.use('seaborn')
+#Per ignorare alcune tipologie di warning
 warnings.simplefilter(action = 'ignore', category = FutureWarning)
 warnings.simplefilter(action = 'ignore', category = UserWarning)
-plt.style.use('seaborn')
 
+#Recupero del dataset
 url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/cpu-performance/machine.data'
 data = pd.read_csv(url, header = None)
 
+#Definizione delle colonne
 data.columns = ['VENDOR', 'MODEL', 'MYCT', 'MMIN', 
                  'MMAX', 'CACH', 'CHMIN', 'CHMAX', 'PRP', 'ERP']
+
 Model_Compare = [[]]
 
+#Drop delle colonne non utilizzate
 n_columns = data.columns.drop(['VENDOR', 'PRP', 'MODEL', 'ERP'])
 d_vendor = pd.get_dummies(data['VENDOR'], prefix = 'vnd', drop_first = True)
 
-# Feature correlation
+#Feature correlation
 sns.heatmap(data[['MYCT', 'MMIN', 'MMAX', 'CACH','CHMIN','CHMAX', 'PRP']].corr(), annot = True)
 plt.title('Correlation Matrix', fontsize = 14)
 
 
 ####################### Predictions with vendor feature ####################################
+
 print('\n'+15*'-'+"Prediction with VENDOR"+15*'-')
 #prepare train, and test data
 y = data['PRP']
 
 X = pd.concat([data[n_columns], d_vendor], axis = 1)
 
+#Divisione in dataset di training e testing
 X_tr,X_ts,y_tr,y_ts=train_test_split(X,y,test_size = 0.15, 
                                      random_state = 42, shuffle = True)
 
-#Feature scaling
+#Scalamento delle feature
 scaler = StandardScaler()
-# Fit on training set only.
-scaler.fit(X_tr)
-
-# Apply transform to both the training set and the test set.
-X_tr = scaler.transform(X_tr)
-X_ts = scaler.transform(X_ts)
+y_scaler = StandardScaler()
 
 y_tr = y_tr.values.reshape(-1, 1)
 y_ts = y_ts.values.reshape(-1, 1)
 
-y_scaler = StandardScaler()
-# Fit on training set only.
+#Fit sul training set
+scaler.fit(X_tr)
 y_scaler.fit(y_tr)
-# Apply transform to both the training set and the test set.
+
+#Trasformazione di training e testing set
+X_tr = scaler.transform(X_tr)
+X_ts = scaler.transform(X_ts)
 y_tr = y_scaler.transform(y_tr)
 y_ts = y_scaler.transform(y_ts)
 
-
 ####################### Lasso Model w/Vendor ##############################################
+
 print('\n'+16*'-'+"Lasso Regression:"+16*'-')
 alpha = 0.0001
 
-sta_fit = time()
+#Definizione del modello
 lasso_reg = Lasso(alpha = alpha, max_iter = 5000)
-lasso_reg.fit(X_tr, y_tr)
 
+#Fitting dei dati sul modello
+sta_fit = time()
+lasso_reg.fit(X_tr, y_tr)
 sto_fit = time()
+
 Fitting_time = (sto_fit - sta_fit)* 1000
 
-#Make predictions
+#Predizione sul set di test
 Y_pred = lasso_reg.predict(X_ts)
 
 #Testing Score
